@@ -34,6 +34,10 @@ process_execute (const char *cli_input)
   char *file_name;
   tid_t tid;
 
+  //Arguments count and arguments themselves
+  int argc=0;
+  char *argv[strlen(cli_input) - 1];
+
   /* Make a copy of the input provided by the user.
      Otherwise there's a race between the caller and load(). */
   input_copy = palloc_get_page (0);
@@ -53,9 +57,17 @@ process_execute (const char *cli_input)
       file_name = token;
       file_name_set = true;
     }
-      printf("%s\n",token);
+      argv[argc] = token;
+      argc++;
+     // printf("%s\n",token);
   }
   printf("File name : %s \n",file_name);
+  printf("The number of arguments are %d \n",argc);
+
+  for(int i=0;i<argc;i++)
+  {
+    printf("arg[%d] : %s\n",i,argv[i]);
+  }
 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (file_name, PRI_DEFAULT, start_process, file_name);
@@ -85,6 +97,20 @@ start_process (void *file_name_)
   palloc_free_page (file_name);
   if (!success)
     thread_exit ();
+
+  //Get hold of the stack pointer
+  void **stack_pointer = &if_.esp;
+
+  //Writing to the stack
+
+  memcpy(*stack_pointer,"g",sizeof(char));
+  *stack_pointer -= sizeof(char);
+  memcpy(*stack_pointer,"b",sizeof(char));
+  *stack_pointer -= sizeof(char);
+  //memcpy(*stack_pointer,"c",sizeof(char));
+
+  hex_dump((uintptr_t) *stack_pointer, *stack_pointer, sizeof(char) * 40, true);
+
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
@@ -465,6 +491,8 @@ setup_stack (void **esp)
       else
         palloc_free_page (kpage);
     }
+
+  //For debugging purposes
   return success;
 }
 
