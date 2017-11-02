@@ -21,6 +21,12 @@
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 
+struct arguments
+{
+  char *argv[10];
+  int argc;
+} args;
+
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
    before process_execute() returns.  Returns the new process's
@@ -29,14 +35,8 @@ tid_t
 process_execute (const char *cli_input)
 {
   char *input_copy;
-
-  //The filename of the executable. Will be the first argument
-  char *file_name;
+  char *filename,*save_ptr;
   tid_t tid;
-
-  //Arguments count and arguments themselves
-  int argc=0;
-  char *argv[strlen(cli_input) - 1];
 
   /* Make a copy of the input provided by the user.
      Otherwise there's a race between the caller and load(). */
@@ -45,8 +45,23 @@ process_execute (const char *cli_input)
     return TID_ERROR;
   strlcpy (input_copy, cli_input, PGSIZE);
 
+  //Extract the executable name and the arguments
+  char *temp=input_copy,*token;
+  bool is_filename_set;
+
+  for(token=strtok_r(temp," ",&save_ptr);token!=NULL;token=strtok_r(NULL," ",&save_ptr))
+  {
+    if(!is_filename_set)
+    {
+      filename = token;
+      is_filename_set = true;
+    }
+    args.argv[args.argc] = token;
+    args.argc++;
+  }
+
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (input_copy, PRI_DEFAULT, start_process, input_copy);
+  tid = thread_create (filename, PRI_DEFAULT, start_process, input_copy);
 
   if (tid == TID_ERROR)
     palloc_free_page (input_copy);
@@ -228,8 +243,6 @@ load (const char *cli_input, void (**eip) (void), void **esp)
   int i;
 
   char *temp = (char *) (cli_input);
-  char *token,*save_ptr,*for_file_name;
-  int argc=0;
   char *file_name;
 
   /* Allocate and activate page directory. */
@@ -238,23 +251,8 @@ load (const char *cli_input, void (**eip) (void), void **esp)
     goto done;
   process_activate ();
 
-  //Not the efficient way to handle the situation but this is a quickfix
-  /* Make a copy of given input to extract the file name */
-     char *input_copy;
-     input_copy = palloc_get_page (0);
-     if (cli_input == NULL)
-        return TID_ERROR;
-     strlcpy (input_copy, cli_input, PGSIZE);
-
-
-  //Extract the file name here
-  file_name=strtok_r(input_copy," ",&for_file_name);
-
-  //Print the filename
-  printf("File name : %s \n",file_name);
-
   /* Open executable file. */
-  file = filesys_open (file_name);
+  file = filesys_open (args.argv[0]);
   if (file == NULL)
     {
       printf ("load: %s: open failed\n", file_name);
@@ -340,36 +338,6 @@ load (const char *cli_input, void (**eip) (void), void **esp)
   /* Start address. */
   *eip = (void (*) (void)) ehdr.e_entry;
 
-
-  //Started a new block to resolve scope issues
-  {
-    //Breaking down the arguments
-    char *argv[strlen(cli_input)+strlen(file_name)];
-    argv[0]=file_name;
-
-    for(token=strtok_r(temp," ",&save_ptr);token!=NULL;token=strtok_r(NULL," ",&save_ptr))
-    {
-        argv[argc] = token;
-        argc++;
-    }
-
-    //Print out the arguments
-    printf("The number of arguments are %d \n",argc);
-    for(int i=0;i<argc;i++)
-    {
-      printf("arg[%d] : %s\n",i,argv[i]);
-    }
-
-    //Writing to the stack
-    //memcpy(*esp,"g",sizeof(char));
-    *esp -= sizeof(char);
-    memcpy(*esp,"b",sizeof(char));
-    *esp -= sizeof(char);
-    //memcpy(*stack_pointer,"c",sizeof(char));
-
-    hex_dump((uintptr_t) *esp, *esp, sizeof(char) * 40, true);
-  }
-
   success = true;
 
  done:
@@ -377,7 +345,24 @@ load (const char *cli_input, void (**eip) (void), void **esp)
   file_close (file);
   return success;
 }
-
+
+//Helper functions to push into stack
+put_word_in_stack(const char *word,void **esp)
+{
+  for(int i=0;i<=strlen(word);i++)
+  {
+    *esp-=1;
+    memcpy(*esp,word[i],sizeof(char));
+  }
+}
+
+put_letter_in_stack(const char *letter,void **esp)
+{
+  *esp-=1;
+  memcpy(*esp,letter,sizeof(char));
+}
+
+
 /* load() helpers. */
 
 static bool install_page (void *upage, void *kpage, bool writable);
@@ -499,10 +484,43 @@ setup_stack (void **esp)
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
       if (success)
-        *esp = PHYS_BASE - 12;
+        *esp = PHYS_BASE-200;
       else
         palloc_free_page (kpage);
     }
+
+    printf("The number of arguments are %d \n",args.argc);
+
+    //Insert the arguments into stack
+    for (int i = args.argc -1; i>=0; i--) {
+      /* code */
+      int length = strlen(args.argv[i]) + 1;
+      *esp-=length;
+      memcpy(*esp,args.argv[i],sizeof(char)*length);
+
+      //*esp-=1;
+      //memcpy(*esp,'0',sizeof(char));
+    }
+
+    //Align to 4 bytes
+    while((int)*esp%4 !=0)
+    {
+      *esp -=sizeof(char);
+      memset(*esp,0,sizeof(char));
+    }
+
+    //TODO: Push the address to argv here
+
+    //Push the number of arguments
+   *esp -= sizeof(int);
+   memcpy(*esp,&args.argc,sizeof(int));
+
+   //Push the return address
+    *esp -=sizeof(int);
+    int return_address =0;
+    memcpy(*esp,&return_address,sizeof(int));
+
+    hex_dump((uintptr_t) *esp, *esp, sizeof(char) * 60, true);
 
   //For debugging purposes
   return success;
