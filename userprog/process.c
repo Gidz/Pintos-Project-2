@@ -45,32 +45,8 @@ process_execute (const char *cli_input)
     return TID_ERROR;
   strlcpy (input_copy, cli_input, PGSIZE);
 
-  //Breaking down the arguments
-  char *temp = (char *) (input_copy);
-  char *token,*save_ptr;
-
-  bool file_name_set = false;
-  for(token=strtok_r(temp," ",&save_ptr);token!=NULL;token=strtok_r(NULL," ",&save_ptr))
-  {
-    if(!file_name_set)
-    {
-      file_name = token;
-      file_name_set = true;
-    }
-      argv[argc] = token;
-      argc++;
-     // printf("%s\n",token);
-  }
-  printf("File name : %s \n",file_name);
-  printf("The number of arguments are %d \n",argc);
-
-  for(int i=0;i<argc;i++)
-  {
-    printf("arg[%d] : %s\n",i,argv[i]);
-  }
-
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (file_name, PRI_DEFAULT, start_process, file_name);
+  tid = thread_create (input_copy, PRI_DEFAULT, start_process, input_copy);
 
   if (tid == TID_ERROR)
     palloc_free_page (input_copy);
@@ -97,20 +73,6 @@ start_process (void *file_name_)
   palloc_free_page (file_name);
   if (!success)
     thread_exit ();
-
-  //Get hold of the stack pointer
-  void **stack_pointer = &if_.esp;
-
-  //Writing to the stack
-
-  memcpy(*stack_pointer,"g",sizeof(char));
-  *stack_pointer -= sizeof(char);
-  memcpy(*stack_pointer,"b",sizeof(char));
-  *stack_pointer -= sizeof(char);
-  //memcpy(*stack_pointer,"c",sizeof(char));
-
-  hex_dump((uintptr_t) *stack_pointer, *stack_pointer, sizeof(char) * 40, true);
-
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
@@ -256,7 +218,7 @@ static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
    and its initial stack pointer into *ESP.
    Returns true if successful, false otherwise. */
 bool
-load (const char *file_name, void (**eip) (void), void **esp)
+load (const char *cli_input, void (**eip) (void), void **esp)
 {
   struct thread *t = thread_current ();
   struct Elf32_Ehdr ehdr;
@@ -265,11 +227,31 @@ load (const char *file_name, void (**eip) (void), void **esp)
   bool success = false;
   int i;
 
+  char *temp = (char *) (cli_input);
+  char *token,*save_ptr,*for_file_name;
+  int argc=0;
+  char *file_name;
+
   /* Allocate and activate page directory. */
   t->pagedir = pagedir_create ();
   if (t->pagedir == NULL)
     goto done;
   process_activate ();
+
+  //Not the efficient way to handle the situation but this is a quickfix
+  /* Make a copy of given input to extract the file name */
+     char *input_copy;
+     input_copy = palloc_get_page (0);
+     if (cli_input == NULL)
+        return TID_ERROR;
+     strlcpy (input_copy, cli_input, PGSIZE);
+
+
+  //Extract the file name here
+  file_name=strtok_r(input_copy," ",&for_file_name);
+
+  //Print the filename
+  printf("File name : %s \n",file_name);
 
   /* Open executable file. */
   file = filesys_open (file_name);
@@ -357,6 +339,36 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
   /* Start address. */
   *eip = (void (*) (void)) ehdr.e_entry;
+
+
+  //Started a new block to resolve scope issues
+  {
+    //Breaking down the arguments
+    char *argv[strlen(cli_input)+strlen(file_name)];
+    argv[0]=file_name;
+
+    for(token=strtok_r(temp," ",&save_ptr);token!=NULL;token=strtok_r(NULL," ",&save_ptr))
+    {
+        argv[argc] = token;
+        argc++;
+    }
+
+    //Print out the arguments
+    printf("The number of arguments are %d \n",argc);
+    for(int i=0;i<argc;i++)
+    {
+      printf("arg[%d] : %s\n",i,argv[i]);
+    }
+
+    //Writing to the stack
+    //memcpy(*esp,"g",sizeof(char));
+    *esp -= sizeof(char);
+    memcpy(*esp,"b",sizeof(char));
+    *esp -= sizeof(char);
+    //memcpy(*stack_pointer,"c",sizeof(char));
+
+    hex_dump((uintptr_t) *esp, *esp, sizeof(char) * 40, true);
+  }
 
   success = true;
 
