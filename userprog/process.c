@@ -479,13 +479,15 @@ setup_stack (void **esp,char **argv,int argc)
 {
   uint8_t *kpage;
   bool success = false;
+  
+  void* addresses[argc];
 
   kpage = palloc_get_page (PAL_USER | PAL_ZERO);
   if (kpage != NULL)
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
       if (success)
-        *esp = PHYS_BASE - 24;
+        *esp = PHYS_BASE - 30;
       else
         palloc_free_page (kpage);
     }
@@ -495,10 +497,13 @@ setup_stack (void **esp,char **argv,int argc)
       /* code */
       int length = strlen(argv[i]) + 1;
       *esp-=length;
+      //POI
+      addresses[i] = *esp;
+      printf("Address %d : %u\n",i,*esp);
       memcpy(*esp,argv[i],sizeof(char)*length);
     }
 
-    //Align to 4 bytes
+     //Align to 4 bytes
     while((int)*esp%4 !=0)
     {
       *esp -=sizeof(char);
@@ -506,17 +511,32 @@ setup_stack (void **esp,char **argv,int argc)
     }
 
     //TODO: Push the address to argv here
+    void *argv_address;
+    for(int i=0;i<argc;i++)
+    {
+      *esp-=sizeof(int);
+      memcpy(*esp,&addresses[i],sizeof(int));
+      if(i==0)
+      {
+        argv_address=*esp;
+        printf("ARGV resides at %u\n",argv_address);
+      }
+    }
+  
+    //Push the argv pointer 
+   *esp -= sizeof(int);
+   memcpy(*esp,argv_address,sizeof(int));
 
-    //Push the number of arguments
-   //*esp -= sizeof(int);
-   //memcpy(*esp,&args.argc,sizeof(int));
+   //Push the number of arguments
+   *esp -= sizeof(int);
+   memcpy(*esp,&argc,sizeof(int));
 
    //Push the return address
-    //*esp -=sizeof(int);
-    //int return_address =0;
-    //memcpy(*esp,&return_address,sizeof(int));
+    *esp -=sizeof(int);
+    int return_address =0;
+    memcpy(*esp,&return_address,sizeof(int));
 
-    //hex_dump((uintptr_t) *esp, *esp, sizeof(char) * 60, true);
+    hex_dump((uintptr_t) *esp, *esp, sizeof(char) * 60, true);
 
   //For debugging purposes
   return success;
