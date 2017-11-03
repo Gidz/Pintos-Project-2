@@ -18,6 +18,8 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 
+#include<stdlib.h>
+
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 
@@ -46,7 +48,7 @@ process_execute (const char *cli_input)
   strlcpy (input_copy, cli_input, PGSIZE);
 
   //Extract the executable name and the arguments
-  char *temp=input_copy,*token;
+  char *temp=cli_input,*token;
   bool is_filename_set;
 
   for(token=strtok_r(temp," ",&save_ptr);token!=NULL;token=strtok_r(NULL," ",&save_ptr))
@@ -56,8 +58,6 @@ process_execute (const char *cli_input)
       filename = token;
       is_filename_set = true;
     }
-    args.argv[args.argc] = token;
-    args.argc++;
   }
 
   /* Create a new thread to execute FILE_NAME. */
@@ -222,7 +222,7 @@ struct Elf32_Phdr
 #define PF_W 2          /* Writable. */
 #define PF_R 4          /* Readable. */
 
-static bool setup_stack (void **esp);
+static bool setup_stack (void **esp,char **argv,int argc);
 static bool validate_segment (const struct Elf32_Phdr *, struct file *);
 static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
                           uint32_t read_bytes, uint32_t zero_bytes,
@@ -245,6 +245,24 @@ load (const char *cli_input, void (**eip) (void), void **esp)
   char *temp = (char *) (cli_input);
   char *file_name;
 
+  int argc=0;
+  char *argv[10];
+
+  //Extract the executable name and the arguments
+  bool is_filename_set;
+  char *token,*save_ptr;
+
+  for(token=strtok_r(temp," ",&save_ptr);token!=NULL;token=strtok_r(NULL," ",&save_ptr))
+  {
+    if(!is_filename_set)
+    {
+      file_name = token;
+      is_filename_set = true;
+    }
+    argv[argc] = token;
+    argc++;
+  }
+
   /* Allocate and activate page directory. */
   t->pagedir = pagedir_create ();
   if (t->pagedir == NULL)
@@ -252,7 +270,7 @@ load (const char *cli_input, void (**eip) (void), void **esp)
   process_activate ();
 
   /* Open executable file. */
-  file = filesys_open (args.argv[0]);
+  file = filesys_open (argv[0]);
   if (file == NULL)
     {
       printf ("load: %s: open failed\n", file_name);
@@ -332,7 +350,7 @@ load (const char *cli_input, void (**eip) (void), void **esp)
     }
 
   /* Set up stack. */
-  if (!setup_stack (esp))
+  if (!setup_stack (esp,argv,argc))
     goto done;
 
   /* Start address. */
@@ -345,23 +363,6 @@ load (const char *cli_input, void (**eip) (void), void **esp)
   file_close (file);
   return success;
 }
-
-//Helper functions to push into stack
-put_word_in_stack(const char *word,void **esp)
-{
-  for(int i=0;i<=strlen(word);i++)
-  {
-    *esp-=1;
-    memcpy(*esp,word[i],sizeof(char));
-  }
-}
-
-put_letter_in_stack(const char *letter,void **esp)
-{
-  *esp-=1;
-  memcpy(*esp,letter,sizeof(char));
-}
-
 
 /* load() helpers. */
 
@@ -474,7 +475,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 /* Create a minimal stack by mapping a zeroed page at the top of
    user virtual memory. */
 static bool
-setup_stack (void **esp)
+setup_stack (void **esp,char **argv,int argc)
 {
   uint8_t *kpage;
   bool success = false;
@@ -484,22 +485,17 @@ setup_stack (void **esp)
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
       if (success)
-        *esp = PHYS_BASE-200;
+        *esp = PHYS_BASE - 24;
       else
         palloc_free_page (kpage);
     }
 
-    printf("The number of arguments are %d \n",args.argc);
-
     //Insert the arguments into stack
-    for (int i = args.argc -1; i>=0; i--) {
+    for (int i = argc -1; i>=0; i--) {
       /* code */
-      int length = strlen(args.argv[i]) + 1;
+      int length = strlen(argv[i]) + 1;
       *esp-=length;
-      memcpy(*esp,args.argv[i],sizeof(char)*length);
-
-      //*esp-=1;
-      //memcpy(*esp,'0',sizeof(char));
+      memcpy(*esp,argv[i],sizeof(char)*length);
     }
 
     //Align to 4 bytes
@@ -512,15 +508,15 @@ setup_stack (void **esp)
     //TODO: Push the address to argv here
 
     //Push the number of arguments
-   *esp -= sizeof(int);
-   memcpy(*esp,&args.argc,sizeof(int));
+   //*esp -= sizeof(int);
+   //memcpy(*esp,&args.argc,sizeof(int));
 
    //Push the return address
-    *esp -=sizeof(int);
-    int return_address =0;
-    memcpy(*esp,&return_address,sizeof(int));
+    //*esp -=sizeof(int);
+    //int return_address =0;
+    //memcpy(*esp,&return_address,sizeof(int));
 
-    hex_dump((uintptr_t) *esp, *esp, sizeof(char) * 60, true);
+    //hex_dump((uintptr_t) *esp, *esp, sizeof(char) * 60, true);
 
   //For debugging purposes
   return success;
