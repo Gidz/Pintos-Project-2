@@ -105,9 +105,12 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid UNUSED)
 {
+  int counter=100;
   //Change to infinite loop for now
-  while (true) {
+  while (counter) {
     /* code */
+    thread_yield();
+    counter--;
   }
   return -1;
 }
