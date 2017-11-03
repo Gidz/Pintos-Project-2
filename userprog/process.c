@@ -23,12 +23,6 @@
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 
-struct arguments
-{
-  char *argv[10];
-  int argc;
-} args;
-
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
    before process_execute() returns.  Returns the new process's
@@ -254,11 +248,6 @@ load (const char *cli_input, void (**eip) (void), void **esp)
 
   for(token=strtok_r(temp," ",&save_ptr);token!=NULL;token=strtok_r(NULL," ",&save_ptr))
   {
-    if(!is_filename_set)
-    {
-      file_name = token;
-      is_filename_set = true;
-    }
     argv[argc] = token;
     argc++;
   }
@@ -472,6 +461,49 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
   return true;
 }
 
+bool pad(void **esp,int length)
+{
+  while(length!=0)
+  {
+    *esp -=1;
+    memcpy(*esp,'0',sizeof(char));
+    length--;
+  }
+}
+
+
+bool put_word_into_stack(void **esp,char *word)
+{
+  int length = strlen(word);
+  if(length>4)
+  {
+    int to_pad=0;
+    //Handle words longer than 4 letters
+    memcpy(*esp,word,sizeof(char)*length);
+    to_pad = 4-(length % 4);
+    //Write offset number of zeroes
+    pad(esp,to_pad);
+    return true;
+  }
+  else if(length <4)
+  {
+    //Handle words lesser than 4 letters
+    int to_pad=0;
+    //Handle words longer than 4 letters
+    memcpy(*esp,word,sizeof(char)*length);
+    to_pad = 4-(length %4);
+    //Write offset number of zeroes
+    pad(esp,to_pad);
+    return true;
+  }
+  else
+  {
+      memcpy(*esp,word,sizeof(char)*length);
+      return true;
+  }
+  return false;
+}
+
 /* Create a minimal stack by mapping a zeroed page at the top of
    user virtual memory. */
 static bool
@@ -480,14 +512,14 @@ setup_stack (void **esp,char **argv,int argc)
   uint8_t *kpage;
   bool success = false;
   
-  void* addresses[argc];
+  char* addresses[argc];
 
   kpage = palloc_get_page (PAL_USER | PAL_ZERO);
   if (kpage != NULL)
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
       if (success)
-        *esp = PHYS_BASE - 30;
+        *esp = PHYS_BASE;
       else
         palloc_free_page (kpage);
     }
@@ -503,30 +535,35 @@ setup_stack (void **esp,char **argv,int argc)
       memcpy(*esp,argv[i],sizeof(char)*length);
     }
 
-     //Align to 4 bytes
+    //Align to 4 bytes
     while((int)*esp%4 !=0)
     {
       *esp -=sizeof(char);
-      memset(*esp,0,sizeof(char));
+      memset(*esp,'\0',sizeof(char));
     }
+
+    *esp-=sizeof(int);
+    memset(*esp,0,sizeof(int));
+
 
     //TODO: Push the address to argv here
     void *argv_address;
     for(int i=0;i<argc;i++)
     {
-      *esp-=sizeof(int);
-      memcpy(*esp,&addresses[i],sizeof(int));
+      *esp-=sizeof(char *);
+      memcpy(*esp,&addresses[i],sizeof(char *));
       if(i==0)
       {
         argv_address=*esp;
         printf("ARGV resides at %u\n",argv_address);
       }
     }
-  
-    //Push the argv pointer 
-   *esp -= sizeof(int);
-   memcpy(*esp,argv_address,sizeof(int));
+ 
+         //Push the argv pointer 
+   *esp -= sizeof(char *);
+   memcpy(*esp,&argv_address,sizeof(char *));
 
+    
    //Push the number of arguments
    *esp -= sizeof(int);
    memcpy(*esp,&argc,sizeof(int));
@@ -535,8 +572,10 @@ setup_stack (void **esp,char **argv,int argc)
     *esp -=sizeof(int);
     int return_address =0;
     memcpy(*esp,&return_address,sizeof(int));
-
-    hex_dump((uintptr_t) *esp, *esp, sizeof(char) * 60, true);
+ printf("Before\n");
+     hex_dump(*esp, *esp, PHYS_BASE - *esp, true);
+     printf("Hello\n");
+ 
 
   //For debugging purposes
   return success;
