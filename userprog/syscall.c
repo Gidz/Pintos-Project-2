@@ -23,6 +23,8 @@ struct file_info
 
 void halt (void);
 int write (int fd, const void * buffer,unsigned size);
+bool create(const char *file,unsigned initial_size);
+
 //TODO : a function to validate user pointer,string and a buffer
 //bool validate_uaddr();
 
@@ -62,94 +64,102 @@ syscall_init (void)
 static void
 syscall_handler (struct intr_frame *f UNUSED)
 {
-  //need to get the interrupt code here and redirect to a particular
-  int const syscall_no = *((int * ) f->esp);
-  int args[3];
+	//need to get the interrupt code here and redirect to a particular
+	int const syscall_no = *((int * ) f->esp);
+	int args[3];
 
-  //printf ("system call! with number%d\n",syscall_no);
-  switch(syscall_no)
-  {
-  	case SYS_HALT :
+	//printf ("system call! with number%d\n",syscall_no);
+	switch(syscall_no)
+	{
+		case SYS_HALT:                   /* Halt the operating system. */
 		{
-			halt();
+		  halt();
 		}
 		break;
-  	case SYS_EXIT :
-  	{
-  		//Rudimentary implementation of exit
-      struct thread *t = thread_current();
-      printf("%s: exit(%d)\n",t->name,0);
-  		thread_exit();
-  	}
-  	break;
-  	case SYS_EXEC :
-  	{
 
+		case SYS_EXIT:                   /* Terminate this process. */
+		{
+		  //Rudimentary implementation of exit
+		  struct thread *t = thread_current();
+		  printf("%s: exit(%d)\n",t->name,0);
+		  thread_exit();
+		}
+		break;
 
-  	}
-  	break;
-  	case SYS_WAIT :
-  	{
+		case SYS_EXEC:                   /* Start another process. */
+		{
 
-  	}
-  	break;
-  	case SYS_CREATE :
-  	{
+		}
+		break;
 
-  	}
-  	break;
-  	case SYS_REMOVE :
-  	{
+		case SYS_WAIT:                   /* Wait for a child process to die. */
+		{
 
+		}
+		break;
 
-  	}
-  	break;
-  	case SYS_OPEN :
-  	{
+		case SYS_CREATE:                 /* Create a file. */
+		{
+      const char* name = (const char *) *((int *)(f->esp)+1) ;
+      unsigned size = *((int *)(f->esp)+2);
+      f->eax =create(name,size);
+    }
+		break;
 
-  	}
-  	break;
-  	case SYS_FILESIZE :
-  	{
+		case SYS_REMOVE:                 /* Delete a file. */
+		{
 
-  	}
-  	break;
-  	case SYS_READ :
-  	{
+		}
+		break;
 
-  	}
-  	break;
-  	case SYS_WRITE :
-  	{
-    // this has a definition of int write (int fd,const void *buffer,unsigned size)
-  			//int fd = *((int * ) (f->esp + 1)); // should have 1 for printf
-  			int fd = *((int *)(f->esp) + 1);
-  			//void const *buffer = ((void *)(f->esp) + 2);
-  			void const * buffer = (char*)(*((uint32_t*)f->esp + 2));
-  			unsigned size = *((unsigned *)(f->esp) + 3);
+		case SYS_OPEN:                   /* Open a file. */
+		{
 
-  			f->eax = write(fd,buffer,size);
-  	}
-  	break;
-  	case SYS_SEEK :
-  	{
+		}
+		break;
 
-  	}
-  	break;
-  	case SYS_TELL :
-  	{
+		case SYS_FILESIZE:               /* Obtain a file's size. */
+		{
 
-  	}
-  	break;
-  	case SYS_CLOSE :
-  	{
+		}
+		break;
 
-  	}
-  	break;
-    default :
-  	thread_exit ();
-	  }
+		case SYS_READ:                   /* Read from a file. */
+		{
 
+		}
+		break;
+
+		case SYS_WRITE:                  /* Write to a file. */
+		{
+		  int fd = *((int *)(f->esp) + 1);
+		  void const * buffer = (char*)(*((uint32_t*)f->esp + 2));
+		  unsigned size = *((unsigned *)(f->esp) + 3);
+		  f->eax = write(fd,buffer,size);
+		}
+		break;
+
+		case SYS_SEEK:                   /* Change position in a file. */
+		{
+
+		}
+		break;
+
+		case SYS_TELL:                   /* Report current position in a file. */
+		{
+
+		}
+		break;
+
+		case SYS_CLOSE:                  /* Close a file. */
+		{
+
+		}
+		break;
+
+		default:
+			thread_exit();
+		}
 }
 
 void halt(void)
@@ -171,3 +181,20 @@ int write(int fd, const void *buffer,unsigned size)
 
 	return size;
 }
+
+bool create(const char *file,unsigned initial_size)
+{
+  //Check for the length of the filename
+  int length = strlen(file);
+  
+  if(length<=14)
+  {
+    return filesys_create(file,initial_size);
+  }
+  else
+  {
+      return false;
+  }
+}
+
+
