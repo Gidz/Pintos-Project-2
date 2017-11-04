@@ -22,8 +22,10 @@ struct file_info
 
 
 void halt (void);
+void exit (int status);
+bool create(const char *file, unsigned initial_size);
+bool remove(const char *file);
 int write (int fd, const void * buffer,unsigned size);
-bool create(const char *file,unsigned initial_size);
 
 //TODO : a function to validate user pointer,string and a buffer
 //bool validate_uaddr();
@@ -64,107 +66,144 @@ syscall_init (void)
 static void
 syscall_handler (struct intr_frame *f UNUSED)
 {
-	//need to get the interrupt code here and redirect to a particular
-	int const syscall_no = *((int * ) f->esp);
-	int args[3];
+  //need to get the interrupt code here and redirect to a particular
+  int const syscall_no = *((int * ) f->esp);
+  int args[3];
 
-	//printf ("system call! with number%d\n",syscall_no);
-	switch(syscall_no)
-	{
-		case SYS_HALT:                   /* Halt the operating system. */
+  //printf ("system call! with number%d\n",syscall_no);
+  switch(syscall_no)
+  {
+  	case SYS_HALT :
 		{
-		  halt();
+			halt();
 		}
 		break;
+  	case SYS_EXIT :
+  	{
+  		//Rudimentary implementation of exit
+      int status = *(int *)(f->esp + 1);
+      exit(status);
+  	}
+  	break;
+  	case SYS_EXEC :
+  	{
 
-		case SYS_EXIT:                   /* Terminate this process. */
-		{
-		  //Rudimentary implementation of exit
-		  struct thread *t = thread_current();
-		  printf("%s: exit(%d)\n",t->name,0);
-		  thread_exit();
-		}
-		break;
 
-		case SYS_EXEC:                   /* Start another process. */
-		{
+  	}
+  	break;
+  	case SYS_WAIT :
+  	{
 
-		}
-		break;
+  	}
+  	break;
+  	case SYS_CREATE :
+  	{
+      const char *file = (char*)(*((uint32_t *)(f->esp) + 1));
+      unsigned initial_size = *((unsigned *)(f->esp) + 2);
+      // returning the value of the file creation
+      f->eax = create(file,initial_size);
 
-		case SYS_WAIT:                   /* Wait for a child process to die. */
-		{
 
-		}
-		break;
+  	}
+  	break;
+  	case SYS_REMOVE :
+  	{
+      const char *file = (char*)(*((uint32_t *)(f->esp) + 1));
+      f->eax = remove(file);
 
-		case SYS_CREATE:                 /* Create a file. */
-		{
-      const char* name = (const char *) *((int *)(f->esp)+1) ;
-      unsigned size = *((int *)(f->esp)+2);
-      f->eax =create(name,size);
-    }
-		break;
+  	}
+  	break;
+  	case SYS_OPEN :
+  	{
 
-		case SYS_REMOVE:                 /* Delete a file. */
-		{
+  	}
+  	break;
+  	case SYS_FILESIZE :
+  	{
 
-		}
-		break;
+  	}
+  	break;
+  	case SYS_READ :
+  	{
 
-		case SYS_OPEN:                   /* Open a file. */
-		{
+  	}
+  	break;
+  	case SYS_WRITE :
+  	{
+    // this has a definition of int write (int fd,const void *buffer,unsigned size)
+  			//int fd = *((int * ) (f->esp + 1)); // should have 1 for printf
+  			int fd = *((int *)(f->esp) + 1);
+  			//void const *buffer = ((void *)(f->esp) + 2);
+  			void const * buffer = (char*)(*((uint32_t*)f->esp + 2));
+  			unsigned size = *((unsigned *)(f->esp) + 3);
 
-		}
-		break;
+  			f->eax = write(fd,buffer,size);
+  	}
+  	break;
+  	case SYS_SEEK :
+  	{
 
-		case SYS_FILESIZE:               /* Obtain a file's size. */
-		{
+  	}
+  	break;
+  	case SYS_TELL :
+  	{
 
-		}
-		break;
+  	}
+  	break;
+  	case SYS_CLOSE :
+  	{
 
-		case SYS_READ:                   /* Read from a file. */
-		{
+  	}
+  	break;
+    default :
+  	thread_exit ();
+	  }
 
-		}
-		break;
-
-		case SYS_WRITE:                  /* Write to a file. */
-		{
-		  int fd = *((int *)(f->esp) + 1);
-		  void const * buffer = (char*)(*((uint32_t*)f->esp + 2));
-		  unsigned size = *((unsigned *)(f->esp) + 3);
-		  f->eax = write(fd,buffer,size);
-		}
-		break;
-
-		case SYS_SEEK:                   /* Change position in a file. */
-		{
-
-		}
-		break;
-
-		case SYS_TELL:                   /* Report current position in a file. */
-		{
-
-		}
-		break;
-
-		case SYS_CLOSE:                  /* Close a file. */
-		{
-
-		}
-		break;
-
-		default:
-			thread_exit();
-		}
 }
 
 void halt(void)
 {
 	shutdown_power_off();
+}
+
+void exit (int status)
+{
+    struct thread *t = thread_current();
+    printf("%s: exit(%d)\n",t->name,status);
+    thread_exit();
+}
+
+bool create(const char *file, unsigned initial_size)
+{
+  // need to create a file and adding it to list
+  bool result = filesys_create((char *)file,initial_size);
+  if (result)
+  {
+    thread_current()->handle ++;
+    thread_current()->handle ++;
+    struct file_info *fi;      /* Declaring a struct object for file_info struct*/
+    fi->handle = thread_current()->handle;
+    fi->fileval = *file;
+    list_push_front(&(thread_current()->process_files),&(fi->elem));
+    return true;
+  }
+  else
+  {
+    return false;
+  }
+}
+
+/* function to remove a file from a filesystem*/
+bool remove(const char *file)
+{
+  /* Psuedo Algo :
+    1/ Look for the file * in the list
+    2/ If matches delete using sys_remove
+    3/      Delete the entry from list as well : list_remove
+    4/ else return False
+  
+  */
+  return filesys_remove(file);
 }
 
 int write(int fd, const void *buffer,unsigned size)
@@ -181,20 +220,3 @@ int write(int fd, const void *buffer,unsigned size)
 
 	return size;
 }
-
-bool create(const char *file,unsigned initial_size)
-{
-  //Check for the length of the filename
-  int length = strlen(file);
-  
-  if(length<=14)
-  {
-    return filesys_create(file,initial_size);
-  }
-  else
-  {
-      return false;
-  }
-}
-
-
