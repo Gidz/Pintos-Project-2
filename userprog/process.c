@@ -243,7 +243,8 @@ load (const char *cli_input, void (**eip) (void), void **esp)
   char *file_name;
 
   int argc=0;
-  char *argv[10];
+  //Support 26 arguments for now
+  char *argv[26];
 
   //Extract the executable name and the arguments
   bool is_filename_set;
