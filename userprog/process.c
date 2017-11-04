@@ -515,70 +515,63 @@ setup_stack (void **esp,char **argv,int argc)
   uint8_t *kpage;
   bool success = false;
   
-  char* addresses[argc];
+  void* addresses[argc];
 
   kpage = palloc_get_page (PAL_USER | PAL_ZERO);
   if (kpage != NULL)
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
       if (success)
-        *esp = PHYS_BASE;
+        *esp = PHYS_BASE - 12;
       else
         palloc_free_page (kpage);
     }
 
     //Insert the arguments into stack
-    for (int i = argc -1; i>=0; i--) {
+    for (int i = argc-1; i>=0; i--) {
       /* code */
       int length = strlen(argv[i]) + 1;
       *esp-=length;
-      //POI
-      addresses[i] = *esp;
-      printf("Address %d : %u\n",i,*esp);
-      memcpy(*esp,argv[i],sizeof(char)*length);
+      //Store the addresses of where the argument is stored on stack
+      addresses[i] = (void *)*esp;
+      memcpy(*esp,argv[i],length);
     }
 
     //Align to 4 bytes
     while((int)*esp%4 !=0)
     {
-      *esp -=sizeof(char);
-      memset(*esp,'\0',sizeof(char));
+      *esp -=1;
+      *(char *)*esp = '\0';
     }
 
+    //Push the sentinel pointer
     *esp-=sizeof(int);
     memset(*esp,0,sizeof(int));
 
 
     //TODO: Push the address to argv here
     void *argv_address;
-    for(int i=0;i<argc;i++)
+    for(int i=argc-1;i>=0;i--)
     {
-      *esp-=sizeof(char *);
-      memcpy(*esp,&addresses[i],sizeof(char *));
+      *esp-=4;
+      memcpy(*esp,&addresses[i],4);
       if(i==0)
       {
         argv_address=*esp;
-        printf("ARGV resides at %u\n",argv_address);
       }
     }
  
-         //Push the argv pointer 
-   *esp -= sizeof(char *);
-   memcpy(*esp,&argv_address,sizeof(char *));
-
+   //Push the argv pointer 
+   *esp -= 4;
+   *(int*)*esp = *esp+4;
     
    //Push the number of arguments
-   *esp -= sizeof(int);
-   memcpy(*esp,&argc,sizeof(int));
+   *esp -=4;
+   *(int *)*esp = argc;
 
    //Push the return address
-    *esp -=sizeof(int);
-    int return_address =0;
-    memcpy(*esp,&return_address,sizeof(int));
- printf("Before\n");
-     hex_dump(*esp, *esp, PHYS_BASE - *esp, true);
-     printf("Hello\n");
- 
+    *esp -=4;
+   *(int *)*esp = 0;
 
   //For debugging purposes
   return success;

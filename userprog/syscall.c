@@ -10,7 +10,7 @@
 #include <threads/thread.h>
 static void syscall_handler (struct intr_frame *);
 
-//Declaring the file decriptors for file system calls
+//Declaring the file descriptors for file system calls
 //static struct file_list;
 
 struct file_info
@@ -65,7 +65,6 @@ syscall_handler (struct intr_frame *f UNUSED)
   //need to get the interrupt code here and redirect to a particular
   int const syscall_no = *((int * ) f->esp);
   int args[3];
-  // need to distpach it to the handler basis the argument number
 
   //printf ("system call! with number%d\n",syscall_no);
   switch(syscall_no)
@@ -76,51 +75,53 @@ syscall_handler (struct intr_frame *f UNUSED)
 		}
 		break;
   	case SYS_EXIT :
-  		{
-  		//printf("Inside exit");
+  	{
+  		//Rudimentary implementation of exit
+      struct thread *t = thread_current();
+      printf("%s: exit(%d)\n",t->name,0);
   		thread_exit();
-  		// need to have process_terminate for it
-  		}
-  		break;
+  	}
+  	break;
   	case SYS_EXEC :
-  		{
+  	{
 
 
-  		}
-  		break;
+  	}
+  	break;
   	case SYS_WAIT :
-  		{
+  	{
 
-  		}
-  		break;
+  	}
+  	break;
   	case SYS_CREATE :
-  		{
+  	{
 
-  		}
-  		break;
+  	}
+  	break;
   	case SYS_REMOVE :
-  		{
+  	{
 
 
-  		}
-  		break;
+  	}
+  	break;
   	case SYS_OPEN :
-  		{
+  	{
 
-  		}
-  		break;
+  	}
+  	break;
   	case SYS_FILESIZE :
-  		{
+  	{
 
-  		}
-  		break;
+  	}
+  	break;
   	case SYS_READ :
-  		{
+  	{
 
-  		}
-  		break;
+  	}
+  	break;
   	case SYS_WRITE :
-  		{// this has a definition of int write (int fd,const void *buffer,unsigned size)
+  	{
+    // this has a definition of int write (int fd,const void *buffer,unsigned size)
   			//int fd = *((int * ) (f->esp + 1)); // should have 1 for printf
   			int fd = *((int *)(f->esp) + 1);
   			//void const *buffer = ((void *)(f->esp) + 2);
@@ -128,24 +129,24 @@ syscall_handler (struct intr_frame *f UNUSED)
   			unsigned size = *((unsigned *)(f->esp) + 3);
 
   			f->eax = write(fd,buffer,size);
-  		}
-  		break;
+  	}
+  	break;
   	case SYS_SEEK :
-  		{
+  	{
 
-  		}
-  		break;
+  	}
+  	break;
   	case SYS_TELL :
-  		{
+  	{
 
-  		}
-  		break;
+  	}
+  	break;
   	case SYS_CLOSE :
-  		{
+  	{
 
-  		}
-  		break;
-  default :
+  	}
+  	break;
+    default :
   	thread_exit ();
 	  }
 
