@@ -1,5 +1,6 @@
 #include "userprog/syscall.h"
 #include <stdio.h>
+#include <string.h>
 #include <syscall-nr.h>
 #include "threads/interrupt.h"
 #include "threads/thread.h"
@@ -8,6 +9,7 @@
 #include "filesys/filesys.h"
 #include <list.h>
 #include <threads/thread.h>
+#include <threads/synch.h>
 static void syscall_handler (struct intr_frame *);
 
 //Declaring the file descriptors for file system calls
@@ -25,6 +27,7 @@ void halt (void);
 void exit (int status);
 bool create(const char *file, unsigned initial_size);
 bool remove(const char *file);
+int open(const char *file);
 int write (int fd, const void * buffer,unsigned size);
 //TODO : a function to validate user pointer,string and a buffer
 //bool validate_uaddr();
@@ -114,7 +117,8 @@ syscall_handler (struct intr_frame *f UNUSED)
   	break;
   	case SYS_OPEN :
   	{
-
+      const char *file = (char*)(*((uint32_t *)(f->esp) + 1));
+      f->eax = open(file);
   	}
   	break;
   	case SYS_FILESIZE :
@@ -175,21 +179,15 @@ void exit (int status)
 bool create(const char *file, unsigned initial_size)
 {
   // need to create a file and adding it to list
-  bool result = filesys_create((char *)file,initial_size);
-  if (result)
-  {
-    thread_current()->handle ++;
-    thread_current()->handle ++;
-    struct file_info *fi;      /* Declaring a struct object for file_info struct*/
-    fi->handle = thread_current()->handle;
-    fi->fileval = *file;
-    list_push_front(&(thread_current()->process_files),&(fi->elem));
-    return true;
-  }
-  else
+  // EDIT : Need to simplify it, FD are part of open files
+  if (strlen(file) == 0)
   {
     return false;
   }
+  //lock_acquire(&filesys_lock);
+  bool result = filesys_create((char *)file,initial_size);
+  //lock_release(&filesys_lock);
+  return result;
 }
 
 /* function to remove a file from a filesystem*/
@@ -203,6 +201,17 @@ bool remove(const char *file)
   
   */
   return filesys_remove(file);
+}
+
+int open(const char *file)
+{
+  struct file_info *fi;      /* Declaring a struct object for file_info struct*/
+  thread_current()->handle ++;
+  thread_current()->handle ++; /* Incrementing the handle by 2 for even handlers*/
+  fi->handle = thread_current()->handle;
+  fi->fileval = filesys_open((char *)file);
+  list_push_front(&(thread_current()->process_files),&(fi->elem));
+  return fi->handle;
 }
 
 int write(int fd, const void *buffer,unsigned size)
