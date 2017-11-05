@@ -84,7 +84,7 @@ syscall_handler (struct intr_frame *f UNUSED)
   	case SYS_EXIT :
   	{
   		//Rudimentary implementation of exit
-      int status = *(int *)((f->esp) + 1);
+      int status = *(int *)((f->esp) + 4);
       exit(status);
   	}
   	break;
@@ -269,7 +269,7 @@ int read (int fd, void *buffer, unsigned size)
   // validate by :
   // if validpointer(buffer,size)
 
-
+  return file_read(fd,buffer,size);
 }
 
 int write(int fd, const void *buffer,unsigned size)
