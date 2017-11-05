@@ -23,12 +23,14 @@ struct file_info
 	int handle;
 };
 
+struct file_info * lookup_file(int fd);
 
 void halt (void);
 void exit (int status);
 bool create(const char *file, unsigned initial_size);
 bool remove(const char *file);
 int open(const char *file);
+int read (int fd, void *buffer, unsigned size);
 int write (int fd, const void * buffer,unsigned size);
 bool validate_uaddr(const void *ptr);
 
@@ -82,7 +84,7 @@ syscall_handler (struct intr_frame *f UNUSED)
   	case SYS_EXIT :
   	{
   		//Rudimentary implementation of exit
-      int status = *(int *)(f->esp + 1);
+      int status = *(int *)((f->esp) + 1);
       exit(status);
   	}
   	break;
@@ -138,7 +140,11 @@ syscall_handler (struct intr_frame *f UNUSED)
   	break;
   	case SYS_READ :
   	{
+      int fd = *((int *)(f->esp) + 1);
+      void const * buffer = (char*)(*((uint32_t*)f->esp + 2));
+      unsigned size = *((unsigned *)(f->esp) + 3);
 
+      f->eax = read(fd,buffer,size);      
   	}
   	break;
   	case SYS_WRITE :
@@ -175,6 +181,23 @@ syscall_handler (struct intr_frame *f UNUSED)
     default :
   	thread_exit ();
 	  }
+
+}
+
+struct file_info * lookup_file(int fd)
+{
+  struct thread * t = thread_current();
+  struct list_elem *e;
+  struct list list_temp = thread_current()->process_files;
+  for (e = list_begin(&list_temp); e != list_end(&list_temp); e = list_next(e))
+  {
+    struct file_info *fi_temp = list_entry(e, struct file_info, elem);
+    if (fi_temp->handle == fd)
+    {
+      return fi_temp;
+    }
+  }
+  return ;
 
 }
 
@@ -237,6 +260,15 @@ int open(const char *file)
   {
     return -1;
   }
+
+}
+
+int read (int fd, void *buffer, unsigned size)
+{
+  // STUB for read
+  // validate by :
+  // if validpointer(buffer,size)
+
 
 }
 
