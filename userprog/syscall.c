@@ -109,7 +109,12 @@ syscall_handler (struct intr_frame *f UNUSED)
       {
         const char *file = (char*)(*((uint32_t *)(f->esp) + 1));
         unsigned initial_size = *((unsigned *)(f->esp) + 2);
-        // returning the value of the file creation
+
+        if(file==NULL)
+        {
+          exit(-1);
+        }
+
         f->eax = create(file,initial_size);
       }
   	}
