@@ -223,7 +223,7 @@ int open(const char *file)
   struct file *tempfile;      /* Temp file to recieve from filesys_open*/
   struct file_info *fi;      /* Declaring a struct object for file_info struct*/
   tempfile = filesys_open((char *)file);
-  if (!tempfile)
+  if (tempfile)
   {
     thread_current()->handle ++;
     thread_current()->handle ++; /* Incrementing the handle by 2 for even handlers*/
