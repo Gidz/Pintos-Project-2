@@ -22,6 +22,9 @@ struct file_info
 
 
 void halt (void);
+void exit (int status);
+bool create(const char *file, unsigned initial_size);
+bool remove(const char *file);
 int write (int fd, const void * buffer,unsigned size);
 //TODO : a function to validate user pointer,string and a buffer
 //bool validate_uaddr();
@@ -77,9 +80,8 @@ syscall_handler (struct intr_frame *f UNUSED)
   	case SYS_EXIT :
   	{
   		//Rudimentary implementation of exit
-      struct thread *t = thread_current();
-      printf("%s: exit(%d)\n",t->name,0);
-  		thread_exit();
+      int status = *(int *)(f->esp + 1);
+      exit(status);
   	}
   	break;
   	case SYS_EXEC :
@@ -95,12 +97,18 @@ syscall_handler (struct intr_frame *f UNUSED)
   	break;
   	case SYS_CREATE :
   	{
+      const char *file = (char*)(*((uint32_t *)(f->esp) + 1));
+      unsigned initial_size = *((unsigned *)(f->esp) + 2);
+      // returning the value of the file creation
+      f->eax = create(file,initial_size);
+
 
   	}
   	break;
   	case SYS_REMOVE :
   	{
-
+      const char *file = (char*)(*((uint32_t *)(f->esp) + 1));
+      f->eax = remove(file);
 
   	}
   	break;
@@ -155,6 +163,46 @@ syscall_handler (struct intr_frame *f UNUSED)
 void halt(void)
 {
 	shutdown_power_off();
+}
+
+void exit (int status)
+{
+    struct thread *t = thread_current();
+    printf("%s: exit(%d)\n",t->name,status);
+    thread_exit();
+}
+
+bool create(const char *file, unsigned initial_size)
+{
+  // need to create a file and adding it to list
+  bool result = filesys_create((char *)file,initial_size);
+  if (result)
+  {
+    thread_current()->handle ++;
+    thread_current()->handle ++;
+    struct file_info *fi;      /* Declaring a struct object for file_info struct*/
+    fi->handle = thread_current()->handle;
+    fi->fileval = *file;
+    list_push_front(&(thread_current()->process_files),&(fi->elem));
+    return true;
+  }
+  else
+  {
+    return false;
+  }
+}
+
+/* function to remove a file from a filesystem*/
+bool remove(const char *file)
+{
+  /* Psuedo Algo :
+    1/ Look for the file * in the list
+    2/ If matches delete using sys_remove
+    3/      Delete the entry from list as well : list_remove
+    4/ else return False
+  
+  */
+  return filesys_remove(file);
 }
 
 int write(int fd, const void *buffer,unsigned size)
