@@ -8,6 +8,8 @@
 #include "filesys/filesys.h"
 #include <list.h>
 #include <threads/thread.h>
+#include<threads/vaddr.h>
+
 static void syscall_handler (struct intr_frame *);
 
 //Declaring the file descriptors for file system calls
@@ -26,9 +28,7 @@ void exit (int status);
 bool create(const char *file, unsigned initial_size);
 bool remove(const char *file);
 int write (int fd, const void * buffer,unsigned size);
-
-//TODO : a function to validate user pointer,string and a buffer
-//bool validate_uaddr();
+bool validate_uaddr(const void *ptr);
 
 //Methods to copy from user to kernel memory
 
@@ -39,10 +39,10 @@ occurred. */
 static int
 get_user (const uint8_t *uaddr)
 {
-int result;
-asm ("movl $1f, %0; movzbl %1, %0; 1:"
-: "=&a" (result) : "m" (*uaddr));
-return result;
+  int result;
+  asm ("movl $1f, %0; movzbl %1, %0; 1:"
+  : "=&a" (result) : "m" (*uaddr));
+  return result;
 }
 
 /*Writes BYTE to user address UDST.
@@ -51,10 +51,10 @@ Returns true if successful, false if a segfault occurred. */
 static bool
 put_user (uint8_t *udst, uint8_t byte)
 {
-int error_code;
-asm ("movl $1f, %0; movb %b2, %1; 1:"
-: "=&a" (error_code), "=m" (*udst) : "q" (byte));
-return error_code != -1;
+  int error_code;
+  asm ("movl $1f, %0; movb %b2, %1; 1:"
+  : "=&a" (error_code), "=m" (*udst) : "q" (byte));
+  return error_code != -1;
 }
 
 void
@@ -68,9 +68,8 @@ syscall_handler (struct intr_frame *f UNUSED)
 {
   //need to get the interrupt code here and redirect to a particular
   int const syscall_no = *((int * ) f->esp);
-  int args[3];
+  void *ptr = f->esp;
 
-  //printf ("system call! with number%d\n",syscall_no);
   switch(syscall_no)
   {
   	case SYS_HALT :
@@ -98,19 +97,30 @@ syscall_handler (struct intr_frame *f UNUSED)
   	break;
   	case SYS_CREATE :
   	{
-      const char *file = (char*)(*((uint32_t *)(f->esp) + 1));
-      unsigned initial_size = *((unsigned *)(f->esp) + 2);
-      // returning the value of the file creation
-      f->eax = create(file,initial_size);
-
-
+      if(!validate_uaddr(ptr+1))
+      {
+        f->esp = -1;
+      }
+      else
+      {
+        const char *file = (char*)(*((uint32_t *)(f->esp) + 1));
+        unsigned initial_size = *((unsigned *)(f->esp) + 2);
+        // returning the value of the file creation
+        f->eax = create(file,initial_size);
+      }
   	}
   	break;
   	case SYS_REMOVE :
   	{
-      const char *file = (char*)(*((uint32_t *)(f->esp) + 1));
-      f->eax = remove(file);
-
+      if(!validate_uaddr(ptr+1))
+      {
+          f->esp = -1;
+      }
+      else
+      {
+        const char *file = (char*)(*((uint32_t *)(f->esp) + 1));
+        f->eax = remove(file);
+      }
   	}
   	break;
   	case SYS_OPEN :
@@ -130,14 +140,18 @@ syscall_handler (struct intr_frame *f UNUSED)
   	break;
   	case SYS_WRITE :
   	{
-    // this has a definition of int write (int fd,const void *buffer,unsigned size)
-  			//int fd = *((int * ) (f->esp + 1)); // should have 1 for printf
+      if(!validate_uaddr((f->esp)+2))
+      {
+          f->esp = -1;
+      }
+      else
+      {
+
   			int fd = *((int *)(f->esp) + 1);
-  			//void const *buffer = ((void *)(f->esp) + 2);
   			void const * buffer = (char*)(*((uint32_t*)f->esp + 2));
   			unsigned size = *((unsigned *)(f->esp) + 3);
-
   			f->eax = write(fd,buffer,size);
+      }
   	}
   	break;
   	case SYS_SEEK :
@@ -220,3 +234,15 @@ int write(int fd, const void *buffer,unsigned size)
 
 	return size;
 }
+
+bool validate_uaddr(const void *ptr)
+{
+  //By default assume that all pointers are invalid for safety purposes
+  bool valid=false;
+  if(is_user_vaddr(ptr) && ptr > 0x08048000 );
+  {
+    valid = true;
+  }
+  return valid;
+}
+
