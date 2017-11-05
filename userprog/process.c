@@ -23,6 +23,7 @@
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 
+
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
    before process_execute() returns.  Returns the new process's
@@ -54,8 +55,20 @@ process_execute (const char *cli_input)
     }
   }
 
+  // init semaphore
+  /*
+  struct semaphore p;
+  sema_init(p,0);
+  struct list p_child;
+  list_init(p_child);
+  */
+  // create list for children of parent  for [child->tid, exit_code] & sema down
+
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (filename, PRI_DEFAULT, start_process, input_copy);
+
+  //list_push(tid,0);
+  // sema_down(p);
 
   if (tid == TID_ERROR)
     palloc_free_page (input_copy);
@@ -81,7 +94,9 @@ start_process (void *file_name_)
   /* If load failed, quit. */
   palloc_free_page (file_name);
   if (!success)
-    thread_exit ();
+    // update parent list with -1 exit status of child tid & sema up
+    thread_exit (-1);
+  // update parent list with exit status of child tid & sema up
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
@@ -92,6 +107,7 @@ start_process (void *file_name_)
   asm volatile ("movl %0, %%esp; jmp intr_exit" : : "g" (&if_) : "memory");
   NOT_REACHED ();
 }
+
 
 /* Waits for thread TID to die and returns its exit status.  If
    it was terminated by the kernel (i.e. killed due to an

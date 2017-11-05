@@ -182,7 +182,9 @@ void exit (int status)
 
 pid_t exec (const char *cmd_line)
 {
-  // Your work starts here
+  // check cmd_line valid
+  int status = process_execute(cmd_line);
+  return status;
 
 }
 
