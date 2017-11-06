@@ -141,13 +141,13 @@ syscall_handler (struct intr_frame *f UNUSED)
   	break;
   	case SYS_FILESIZE :
   	{
-
+        int fd = *((int *)(f->esp) + 1);
+        f->eax = filesize(fd);
   	}
   	break;
   	case SYS_READ :
   	{
       validate_uaddr((char*)(*((uint32_t *)(f->esp) + 2)));
-      
       int fd = *((int *)(f->esp) + 1);
       void const * buffer = (char*)(*((uint32_t*)f->esp + 2));
       unsigned size = *((unsigned *)(f->esp) + 3);
@@ -184,7 +184,8 @@ syscall_handler (struct intr_frame *f UNUSED)
   	break;
   	case SYS_CLOSE :
   	{
-
+      int fd = *((int *)(f->esp) + 1);
+      f->eax = close(fd);
   	}
   	break;
     default :
@@ -274,9 +275,6 @@ int open(const char *file)
 
 int read (int fd, void *buffer, unsigned size)
 {
-  // STUB for read
-  // validate by :
-  // if validpointer(buffer,size)
   if(fd==0)
   {
     //Needed as we cannot write directly to a void pointer.
@@ -296,11 +294,16 @@ int read (int fd, void *buffer, unsigned size)
     {
       return size;
     }
-    //Get the file using the file handle
-    //Then execute the line below
-    //Make sure to lock the filesys before this
-    //return file_read(fd,buffer,size);
-
+    struct file *f = get_file(fd);
+    if(f==NULL)
+    {
+      return 0;
+    }
+    
+    lock_filesys();
+      int return_value = file_read(f,buffer,size);
+    unlock_filesys();
+    return return_value;
   }
 } 
 
@@ -336,7 +339,57 @@ struct file* get_file(int fd)
 {
   struct thread *t = thread_current();
   struct list_elem *e;
-  
-  //Traverse the list and check for the matching fd i.e HANDLE
-  //when found, return the struct file pointer FILEVAL
+
+  //Travers the PROCESS_FILES and find the matching fd a.k.a HANDLE
+  for(e=list_begin(&t->process_files);e!=list_end(&t->process_files);e=list_next(&t->process_files))
+  {
+    struct file_info *f = list_entry(e,struct file_info,elem);
+    if(f->handle == fd)
+      return f->fileval;
+  }
+
+  //If no HANDLE is found
+  return NULL;
+}
+
+bool remove_file(int fd)
+{
+  struct thread *t = thread_current();
+  struct list_elem *e;
+
+  //Travers the PROCESS_FILES and find the matching fd a.k.a HANDLE
+  for(e=list_begin(&t->process_files);e!=list_end(&t->process_files);e=list_next(&t->process_files))
+  {
+    struct file_info *f = list_entry(e,struct file_info,elem);
+    if(f->handle == fd)
+      list_remove(&f->elem);
+  }
+
+  //If no HANDLE is found
+  return NULL;
+}
+
+int filesize(int fd)
+{
+    struct file *f = get_file(fd);
+    if(f==NULL)
+    {
+      return -1;
+    }
+    else
+    {
+      return file_length(fd);     
+    }
+}
+
+void close(int fd)
+{
+  struct file *f;
+  f = get_file(fd);
+  if(f!=NULL)
+  {
+    file_close(f);
+    //Also remove from the list, the file with corresponding fd
+    remove_file(fd);
+  }
 }
