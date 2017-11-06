@@ -109,6 +109,10 @@ syscall_handler (struct intr_frame *f UNUSED)
       {
         const char *file = (char*)(*((uint32_t *)(f->esp) + 1));
         unsigned initial_size = *((unsigned *)(f->esp) + 2);
+        if(file==NULL)
+        {
+          exit(-1);
+        }
         f->eax = create(file,initial_size);
       }
   	}
@@ -142,7 +146,7 @@ syscall_handler (struct intr_frame *f UNUSED)
       int fd = *((int *)(f->esp) + 1);
       void const * buffer = (char*)(*((uint32_t*)f->esp + 2));
       unsigned size = *((unsigned *)(f->esp) + 3);
-
+      //printf("The size is %d\n",fd);
       f->eax = read(fd,buffer,size);      
   	}
   	break;
@@ -280,8 +284,12 @@ int read (int fd, void *buffer, unsigned size)
     }
     return size;
   }
-  return file_read(fd,buffer,size);
-}
+  else
+  {
+    return file_read(fd,buffer,size);
+    exit(-1);
+  }
+} 
 
 int write(int fd, const void *buffer,unsigned size)
 {
@@ -294,7 +302,6 @@ int write(int fd, const void *buffer,unsigned size)
 	{
 		// write for a specific file
 	}
-
 	return size;
 }
 
@@ -303,7 +310,7 @@ bool validate_uaddr(const void *ptr)
   //By default assume that all pointers are invalid for safety purposes
   struct thread *t = thread_current();
   void * p = pagedir_get_page(t->pagedir,ptr);
-  if(is_user_vaddr(ptr) && ptr > 0x08048000 && p!=NULL )
+  if(is_user_vaddr(ptr) && ptr > 0x08048000 && p!=NULL)
   {
     return true;
   }
