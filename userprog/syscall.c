@@ -266,6 +266,10 @@ int open(const char *file)
   {
     thread_current()->handle ++;
     thread_current()->handle ++; /* Incrementing the handle by 2 for even handlers*/
+
+    //Allocate memory for file_info
+    fi = malloc(sizeof(struct file_info));
+
     fi->handle = thread_current()->handle;
     fi->fileval = tempfile;
     list_push_front(&(thread_current()->process_files),&(fi->elem));
