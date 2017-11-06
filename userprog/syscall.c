@@ -91,6 +91,7 @@ syscall_handler (struct intr_frame *f UNUSED)
   	case SYS_EXIT :
   	{
   		//Rudimentary implementation of exit
+      validate_uaddr((f->esp) + 4);
       int status = *(int *)((f->esp) + 4);
       exit(status);
   	}
@@ -204,22 +205,22 @@ syscall_handler (struct intr_frame *f UNUSED)
 
 }
 
-struct file_info * lookup_file(int fd)
-{
-  struct thread * t = thread_current();
-  struct list_elem *e;
-  struct list list_temp = thread_current()->process_files;
-  for (e = list_begin(&list_temp); e != list_end(&list_temp); e = list_next(e))
-  {
-    struct file_info *fi_temp = list_entry(e, struct file_info, elem);
-    if (fi_temp->handle == fd)
-    {
-      return fi_temp;
-    }
-  }
-  return ;
-
-}
+//struct file_info * lookup_file(int fd)
+//{
+//  struct thread * t = thread_current();
+//  struct list_elem *e;
+//  struct list list_temp = thread_current()->process_files;
+//  for (e = list_begin(&list_temp); e != list_end(&list_temp); e = list_next(e))
+//  {
+//    struct file_info *fi_temp = list_entry(e, struct file_info, elem);
+//    if (fi_temp->handle == fd)
+//    {
+//      return fi_temp;
+//    }
+//  }
+//  return ;
+//
+//}
 
 void halt(void)
 {

@@ -98,12 +98,12 @@ struct thread
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
-    struct list process_files;          /* List to hold the process files*/
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
     int handle;                         /* Handle for handling the file; initialized to 2*/
+    struct list process_files;          /* List to holds the process files*/
 #endif
 
     /* Owned by thread.c. */
