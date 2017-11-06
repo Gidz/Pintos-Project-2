@@ -101,7 +101,7 @@ syscall_handler (struct intr_frame *f UNUSED)
   	break;
   	case SYS_CREATE :
   	{
-      if(!validate_uaddr(ptr+1))
+      if(!validate_uaddr((char *)ptr+1))
       {
         f->esp = -1;
       }
@@ -109,12 +109,6 @@ syscall_handler (struct intr_frame *f UNUSED)
       {
         const char *file = (char*)(*((uint32_t *)(f->esp) + 1));
         unsigned initial_size = *((unsigned *)(f->esp) + 2);
-
-        if(file==NULL)
-        {
-          exit(-1);
-        }
-
         f->eax = create(file,initial_size);
       }
   	}
@@ -273,7 +267,19 @@ int read (int fd, void *buffer, unsigned size)
   // STUB for read
   // validate by :
   // if validpointer(buffer,size)
-
+  if(fd==0)
+  {
+    //Needed as we cannot write directly to a void pointer.
+    char *temp = (char *)buffer;
+    int i=0;
+    while(i<size)
+    {
+      //Read into the temp
+      temp[i]=input_getc();
+      i++;
+    }
+    return size;
+  }
   return file_read(fd,buffer,size);
 }
 
@@ -295,11 +301,15 @@ int write(int fd, const void *buffer,unsigned size)
 bool validate_uaddr(const void *ptr)
 {
   //By default assume that all pointers are invalid for safety purposes
-  bool valid=false;
-  if(is_user_vaddr(ptr) && ptr > 0x08048000 );
+  struct thread *t = thread_current();
+  void * p = pagedir_get_page(t->pagedir,ptr);
+  if(is_user_vaddr(ptr) && ptr > 0x08048000 && p!=NULL )
   {
-    valid = true;
+    return true;
   }
-  return valid;
+  else
+  {
+    exit(-1);
+  }
 }
 
