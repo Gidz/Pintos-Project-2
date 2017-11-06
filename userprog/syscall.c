@@ -150,7 +150,10 @@ syscall_handler (struct intr_frame *f UNUSED)
   	break;
   	case SYS_READ :
   	{
-      validate_uaddr((char*)(*((uint32_t *)(f->esp) + 2)));
+      if(!validate_uaddr((char*)(*((uint32_t *)(f->esp) + 2))))
+      {
+          f->esp=-1;
+      }
 
       int fd = *((int *)(f->esp) + 1);
       void const * buffer = (char*)(*((uint32_t*)f->esp + 2));
@@ -340,10 +343,13 @@ int write(int fd, const void *buffer,unsigned size)
 bool validate_uaddr(const void *ptr)
 {
   struct thread *t = thread_current();
-  void * p = pagedir_get_page(t->pagedir,ptr);
-  if(is_user_vaddr(ptr) && ptr > 0x08048000 && p!=NULL)
+  if(is_user_vaddr(ptr) && ptr > 0x08048000)
   {
-    return true;
+    void * p = pagedir_get_page(t->pagedir,ptr);
+    if(p!=NULL)
+      return true;
+    else
+      exit(-1);
   }
   else
   {
