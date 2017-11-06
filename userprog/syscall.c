@@ -22,6 +22,7 @@ struct file_info
 	int handle;
 };
 
+struct file_info * lookup_file(int fd);
 
 void halt (void);
 void exit (int status);
@@ -84,7 +85,7 @@ syscall_handler (struct intr_frame *f UNUSED)
   	case SYS_EXIT :
   	{
   		//Rudimentary implementation of exit
-      int status = *(int *)(f->esp + 1);
+      int status = *(int *)((f->esp) + 1);
       exit(status);
   	}
   	break;
@@ -166,6 +167,12 @@ syscall_handler (struct intr_frame *f UNUSED)
     default :
   	thread_exit ();
 	  }
+
+}
+
+struct file_info * lookup_file(int fd)
+{
+  struct thread * t = thread_current();
 
 }
 
