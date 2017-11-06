@@ -184,9 +184,9 @@ bool create(const char *file, unsigned initial_size)
   {
     return false;
   }
-  //lock_acquire(&filesys_lock);
+  lock_acquire(&filesys_lock);
   bool result = filesys_create((char *)file,initial_size);
-  //lock_release(&filesys_lock);
+  lock_release(&filesys_lock);
   return result;
 }
 
@@ -205,13 +205,25 @@ bool remove(const char *file)
 
 int open(const char *file)
 {
+  
+  struct file *tempfile;      /* Temp file to recieve from filesys_open*/
   struct file_info *fi;      /* Declaring a struct object for file_info struct*/
-  thread_current()->handle ++;
-  thread_current()->handle ++; /* Incrementing the handle by 2 for even handlers*/
-  fi->handle = thread_current()->handle;
-  fi->fileval = filesys_open((char *)file);
-  list_push_front(&(thread_current()->process_files),&(fi->elem));
-  return fi->handle;
+  tempfile = filesys_open((char *)file);
+  if (!tempfile)
+  {
+    thread_current()->handle ++;
+    thread_current()->handle ++; /* Incrementing the handle by 2 for even handlers*/
+    fi->handle = thread_current()->handle;
+    fi->fileval = tempfile;
+    list_push_front(&(thread_current()->process_files),&(fi->elem));
+    return fi->handle;
+
+  }
+  else
+  {
+    return -1;
+  }
+
 }
 
 int write(int fd, const void *buffer,unsigned size)

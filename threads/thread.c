@@ -37,8 +37,7 @@ static struct thread *initial_thread;
 /* Lock used by allocate_tid(). */
 static struct lock tid_lock;
 
-/* Lock used for file system operations*/
-struct lock filesys_lock;
+
 
 /* Stack frame for kernel_thread(). */
 struct kernel_thread_frame 
