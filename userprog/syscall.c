@@ -70,8 +70,11 @@ syscall_init (void)
 static void
 syscall_handler (struct intr_frame *f UNUSED)
 {
-  //need to get the interrupt code here and redirect to a particular
+  //Need to get the interrupt code here and redirect to a particular
+  validate_uaddr(f->esp);
   int const syscall_no = *((int * ) f->esp);
+  validate_uaddr((const void *)f->esp);
+  
   void *ptr = f->esp;
 
   switch(syscall_no)
@@ -133,6 +136,10 @@ syscall_handler (struct intr_frame *f UNUSED)
   	case SYS_OPEN :
   	{
       const char *file = (char*)(*((uint32_t *)(f->esp) + 1));
+      if(file==NULL)
+      {
+        exit(-1);
+      }
       f->eax = open(file);
   	}
   	break;
@@ -307,7 +314,6 @@ int write(int fd, const void *buffer,unsigned size)
 
 bool validate_uaddr(const void *ptr)
 {
-  //By default assume that all pointers are invalid for safety purposes
   struct thread *t = thread_current();
   void * p = pagedir_get_page(t->pagedir,ptr);
   if(is_user_vaddr(ptr) && ptr > 0x08048000 && p!=NULL)
