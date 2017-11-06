@@ -18,9 +18,9 @@ static void syscall_handler (struct intr_frame *);
 
 struct file_info
 {
-	struct list_elem elem;
 	struct file *fileval;
 	int handle;
+	struct list_elem elem;
 };
 
 struct file_info * lookup_file(int fd);
@@ -33,6 +33,7 @@ int open(const char *file);
 int read (int fd, void *buffer, unsigned size);
 int write (int fd, const void * buffer,unsigned size);
 bool validate_uaddr(const void *ptr);
+struct file* get_file(int fd);
 
 //Methods to copy from user to kernel memory
 
@@ -253,7 +254,9 @@ int open(const char *file)
   
   struct file *tempfile;      /* Temp file to recieve from filesys_open*/
   struct file_info *fi;      /* Declaring a struct object for file_info struct*/
+  lock_filesys();
   tempfile = filesys_open((char *)file);
+  unlock_filesys();
   if (tempfile)
   {
     thread_current()->handle ++;
@@ -329,3 +332,11 @@ bool validate_uaddr(const void *ptr)
   }
 }
 
+struct file* get_file(int fd)
+{
+  struct thread *t = thread_current();
+  struct list_elem *e;
+  
+  //Traverse the list and check for the matching fd i.e HANDLE
+  //when found, return the struct file pointer FILEVAL
+}
