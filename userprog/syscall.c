@@ -262,7 +262,6 @@ int open(const char *file)
   struct file_info *fi;      /* Declaring a struct object for file_info struct*/
   lock_filesys();
   tempfile = filesys_open((char *)file);
-  unlock_filesys();
   if (tempfile)
   {
     thread_current()->handle ++;
@@ -270,10 +269,12 @@ int open(const char *file)
     fi->handle = thread_current()->handle;
     fi->fileval = tempfile;
     list_push_front(&(thread_current()->process_files),&(fi->elem));
+    unlock_filesys();
     return fi->handle;
   }
   else
   {
+    unlock_filesys();
     return -1;
   }
 }
