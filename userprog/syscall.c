@@ -104,7 +104,7 @@ syscall_handler (struct intr_frame *f UNUSED)
   	break;
   	case SYS_CREATE :
   	{
-      if(!validate_uaddr((char *)ptr+1))
+      if(!validate_uaddr((char*)(*((uint32_t *)(f->esp) + 1))))
       {
         f->esp = -1;
       }
@@ -135,6 +135,11 @@ syscall_handler (struct intr_frame *f UNUSED)
   	break;
   	case SYS_OPEN :
   	{
+      if(!validate_uaddr((char*)(*((uint32_t *)(f->esp) + 1))))
+      {
+        f->esp = -1;
+      }
+
       const char *file = (char*)(*((uint32_t *)(f->esp) + 1));
       if(file==NULL)
       {
@@ -150,18 +155,21 @@ syscall_handler (struct intr_frame *f UNUSED)
   	break;
   	case SYS_READ :
   	{
+      validate_uaddr((char*)(*((uint32_t *)(f->esp) + 2)));
+
       int fd = *((int *)(f->esp) + 1);
       void const * buffer = (char*)(*((uint32_t*)f->esp + 2));
       unsigned size = *((unsigned *)(f->esp) + 3);
-      //printf("The size is %d\n",fd);
+
+            //printf("The size is %d\n",fd);
       f->eax = read(fd,buffer,size);      
   	}
   	break;
   	case SYS_WRITE :
   	{
-      if(!validate_uaddr((f->esp)+2))
+      if(!validate_uaddr((char*)(*((uint32_t *)(f->esp) + 2))))
       {
-          f->esp = -1;
+        f->esp = -1;
       }
       else
       {
