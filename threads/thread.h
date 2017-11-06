@@ -95,7 +95,6 @@ struct thread
     uint8_t *stack;                     /* Saved stack pointer. */
     int priority;                       /* Priority. */
     struct list_elem allelem;           /* List element for all threads list. */
-    int handle;                         /* Handle for handling the file; initialized to 2*/
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
@@ -104,6 +103,7 @@ struct thread
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
+    int handle;                         /* Handle for handling the file; initialized to 2*/
 #endif
 
     /* Owned by thread.c. */

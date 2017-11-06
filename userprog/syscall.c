@@ -122,15 +122,9 @@ syscall_handler (struct intr_frame *f UNUSED)
   	break;
   	case SYS_REMOVE :
   	{
-      if(!validate_uaddr(ptr+1))
-      {
-          f->esp = -1;
-      }
-      else
-      {
-        const char *file = (char*)(*((uint32_t *)(f->esp) + 1));
-        f->eax = remove(file);
-      }
+      validate_uaddr((char*)(*((uint32_t *)(f->esp) + 1)));
+      const char *file = (char*)(*((uint32_t *)(f->esp) + 1));
+      f->eax = remove(file);
   	}
   	break;
   	case SYS_OPEN :
@@ -152,10 +146,13 @@ syscall_handler (struct intr_frame *f UNUSED)
   	case SYS_READ :
   	{
       validate_uaddr((char*)(*((uint32_t *)(f->esp) + 2)));
-
+      
       int fd = *((int *)(f->esp) + 1);
       void const * buffer = (char*)(*((uint32_t*)f->esp + 2));
       unsigned size = *((unsigned *)(f->esp) + 3);
+      
+      //validate_buffer();
+
       f->eax = read(fd,buffer,size);      
   	}
   	break;
@@ -292,8 +289,15 @@ int read (int fd, void *buffer, unsigned size)
   }
   else
   {
-    return file_read(fd,buffer,size);
-    exit(-1);
+    if(size == 0)
+    {
+      return size;
+    }
+    //Get the file using the file handle
+    //Then execute the line below
+    //Make sure to lock the filesys before this
+    //return file_read(fd,buffer,size);
+
   }
 } 
 
