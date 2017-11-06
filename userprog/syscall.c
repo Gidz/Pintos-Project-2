@@ -36,6 +36,7 @@ bool validate_uaddr(const void *ptr);
 struct file* get_file(int fd);
 void seek(int fd, unsigned position);
 unsigned tell(int fd);
+void close(int fd);
 
 //Methods to copy from user to kernel memory
 
@@ -150,6 +151,7 @@ syscall_handler (struct intr_frame *f UNUSED)
   	case SYS_READ :
   	{
       validate_uaddr((char*)(*((uint32_t *)(f->esp) + 2)));
+
       int fd = *((int *)(f->esp) + 1);
       void const * buffer = (char*)(*((uint32_t*)f->esp + 2));
       unsigned size = *((unsigned *)(f->esp) + 3);
@@ -190,7 +192,7 @@ syscall_handler (struct intr_frame *f UNUSED)
   	case SYS_CLOSE :
   	{
       int fd = *((int *)(f->esp) + 1);
-      f->eax = close(fd);
+      close(fd);
   	}
   	break;
     default :
@@ -394,7 +396,7 @@ int filesize(int fd)
     }
     else
     {
-      return file_length(fd);     
+      return file_length(f);     
     }
 }
 
