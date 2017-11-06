@@ -156,7 +156,6 @@ syscall_handler (struct intr_frame *f UNUSED)
       int fd = *((int *)(f->esp) + 1);
       void const * buffer = (char*)(*((uint32_t*)f->esp + 2));
       unsigned size = *((unsigned *)(f->esp) + 3);
-
       f->eax = read(fd,buffer,size);      
   	}
   	break;
