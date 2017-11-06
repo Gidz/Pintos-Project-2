@@ -247,14 +247,11 @@ bool create(const char *file, unsigned initial_size)
 /* function to remove a file from a filesystem*/
 bool remove(const char *file)
 {
-  /* Psuedo Algo :
-    1/ Look for the file * in the list
-    2/ If matches delete using sys_remove
-    3/      Delete the entry from list as well : list_remove
-    4/ else return False
-  
-  */
-  return filesys_remove(file);
+  bool return_value;
+  lock_filesys();
+  return_value = filesys_remove(file);
+  unlock_filesys();
+  return return_value;
 }
 
 int open(const char *file)
@@ -264,6 +261,7 @@ int open(const char *file)
   struct file_info *fi;      /* Declaring a struct object for file_info struct*/
   lock_filesys();
   tempfile = filesys_open((char *)file);
+  unlock_filesys();
   if (tempfile)
   {
     thread_current()->handle ++;
@@ -275,12 +273,10 @@ int open(const char *file)
     fi->handle = thread_current()->handle;
     fi->fileval = tempfile;
     list_push_front(&(thread_current()->process_files),&(fi->elem));
-    unlock_filesys();
     return fi->handle;
   }
   else
   {
-    unlock_filesys();
     return -1;
   }
 }
@@ -333,7 +329,9 @@ int write(int fd, const void *buffer,unsigned size)
     int return_value;
     if(f!=NULL)
     {
-      return_value = file_write(f,buffer,size);
+      lock_filesys();
+        return_value = file_write(f,buffer,size);
+      unlock_filesys();
     }
     return return_value;
 	}
@@ -396,7 +394,11 @@ int filesize(int fd)
     }
     else
     {
-      return file_length(f);     
+      int length;
+      lock_filesys();
+        length = file_length(f);     
+      unlock_filesys();
+      return length;
     }
 }
 
@@ -406,9 +408,11 @@ void close(int fd)
   f = get_file(fd);
   if(f!=NULL)
   {
-    file_close(f);
+    lock_filesys();
+      file_close(f);
+      remove_file(fd);
+    unlock_filesys();
     //Also remove from the list, the file with corresponding fd
-    remove_file(fd);
   }
 }
 
@@ -417,7 +421,9 @@ void seek(int fd, unsigned position)
   struct file *f = get_file(fd);
   if(f!=NULL)
   {
+    lock_filesys();
     file_seek(f,position);
+    unlock_filesys();
   }
 }
 
