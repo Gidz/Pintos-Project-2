@@ -91,7 +91,7 @@ thread_init (void)
 {
   ASSERT (intr_get_level () == INTR_OFF);
 
-  lock_init (&filesys_lock);
+  lock_init (&fs_lock);
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
@@ -591,3 +591,14 @@ allocate_tid (void)
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
+
+/*Code required for project 2*/
+void lock_filesys(void)
+{
+  lock_acquire(&fs_lock);
+}
+
+void unlock_filesys(void)
+{
+  lock_release(&fs_lock);
+}

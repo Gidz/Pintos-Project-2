@@ -26,7 +26,7 @@ typedef int tid_t;
 #define PRI_MAX 63                      /* Highest priority. */
 
 /* Lock used for file system operations*/
-struct lock filesys_lock;
+struct lock fs_lock;
 
 
 
@@ -145,5 +145,10 @@ int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
+
+void lock_filesys(void);
+void unlock_filesys(void);
+
+/*Required for project 2*/
 
 #endif /* threads/thread.h */

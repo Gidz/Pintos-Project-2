@@ -233,9 +233,9 @@ bool create(const char *file, unsigned initial_size)
   {
     return false;
   }
-  lock_acquire(&filesys_lock);
+  lock_filesys();
   bool result = filesys_create((char *)file,initial_size);
-  lock_release(&filesys_lock);
+  unlock_filesys();
   return result;
 }
 
@@ -266,13 +266,11 @@ int open(const char *file)
     fi->fileval = tempfile;
     list_push_front(&(thread_current()->process_files),&(fi->elem));
     return fi->handle;
-
   }
   else
   {
     return -1;
   }
-
 }
 
 int read (int fd, void *buffer, unsigned size)
