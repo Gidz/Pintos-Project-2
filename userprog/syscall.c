@@ -347,7 +347,9 @@ bool validate_uaddr(const void *ptr)
   {
     void * p = pagedir_get_page(t->pagedir,ptr);
     if(p!=NULL)
-      return true;
+    {
+        return true;
+    }
     else
       exit(-1);
   }
