@@ -34,6 +34,8 @@ int read (int fd, void *buffer, unsigned size);
 int write (int fd, const void * buffer,unsigned size);
 bool validate_uaddr(const void *ptr);
 struct file* get_file(int fd);
+void seek(int fd, unsigned position);
+unsigned tell(int fd);
 
 //Methods to copy from user to kernel memory
 
@@ -174,12 +176,15 @@ syscall_handler (struct intr_frame *f UNUSED)
   	break;
   	case SYS_SEEK :
   	{
-
+      int fd = *((int *)(f->esp) + 1);
+      unsigned position =  *((unsigned*)(f->esp) + 2);
+      seek(fd,position);
   	}
   	break;
   	case SYS_TELL :
   	{
-
+      int fd = *((int *)(f->esp) + 1);
+      f->eax = tell(fd);
   	}
   	break;
   	case SYS_CLOSE :
@@ -317,8 +322,14 @@ int write(int fd, const void *buffer,unsigned size)
 	else
 	{
 		// write for a specific file
+    struct file *f = get_file(fd);
+    int return_value;
+    if(f!=NULL)
+    {
+      return_value = file_write(f,buffer,size);
+    }
+    return return_value;
 	}
-	return size;
 }
 
 bool validate_uaddr(const void *ptr)
@@ -392,4 +403,22 @@ void close(int fd)
     //Also remove from the list, the file with corresponding fd
     remove_file(fd);
   }
+}
+
+void seek(int fd, unsigned position)
+{
+  struct file *f = get_file(fd);
+  if(f!=NULL)
+  {
+    file_seek(f,position);
+  }
+}
+
+unsigned tell(int fd)
+{
+    struct file *f = get_file(fd);
+    if(f!=NULL)
+    {
+      return file_tell(f);
+    }
 }
