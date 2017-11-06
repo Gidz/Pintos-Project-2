@@ -421,7 +421,7 @@ void seek(int fd, unsigned position)
   if(f!=NULL)
   {
     lock_filesys();
-      file_seek(f,position);
+    file_seek(f,position);
     unlock_filesys();
   }
 }
