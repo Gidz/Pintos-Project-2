@@ -28,6 +28,7 @@ void exit (int status);
 bool create(const char *file, unsigned initial_size);
 bool remove(const char *file);
 int open(const char *file);
+int read (int fd, void *buffer, unsigned size);
 int write (int fd, const void * buffer,unsigned size);
 //TODO : a function to validate user pointer,string and a buffer
 //bool validate_uaddr();
@@ -128,7 +129,11 @@ syscall_handler (struct intr_frame *f UNUSED)
   	break;
   	case SYS_READ :
   	{
+      int fd = *((int *)(f->esp) + 1);
+      void const * buffer = (char*)(*((uint32_t*)f->esp + 2));
+      unsigned size = *((unsigned *)(f->esp) + 3);
 
+      f->eax = read(fd,buffer,size);      
   	}
   	break;
   	case SYS_WRITE :
@@ -223,6 +228,15 @@ int open(const char *file)
   {
     return -1;
   }
+
+}
+
+int read (int fd, void *buffer, unsigned size)
+{
+  // STUB for read
+  // validate by :
+  // if validpointer(buffer,size)
+
 
 }
 
