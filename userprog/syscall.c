@@ -10,6 +10,9 @@
 #include <list.h>
 #include <threads/thread.h>
 #include <threads/synch.h>
+#include "userprog/process.h"
+#include "userprog/syscall.h"
+
 static void syscall_handler (struct intr_frame *);
 
 //Declaring the file descriptors for file system calls
@@ -25,6 +28,7 @@ struct file_info
 
 void halt (void);
 void exit (int status);
+pid_t exec (const char *cmd_line);
 bool create(const char *file, unsigned initial_size);
 bool remove(const char *file);
 int open(const char *file);
@@ -89,8 +93,8 @@ syscall_handler (struct intr_frame *f UNUSED)
   	break;
   	case SYS_EXEC :
   	{
-
-
+      const char *cmd_line = (char*)(*((uint32_t *)(f->esp) + 1));
+      f->eax = exec(cmd_line);
   	}
   	break;
   	case SYS_WAIT :
@@ -174,6 +178,12 @@ void exit (int status)
     struct thread *t = thread_current();
     printf("%s: exit(%d)\n",t->name,status);
     thread_exit();
+}
+
+pid_t exec (const char *cmd_line)
+{
+  // Your work starts here
+
 }
 
 bool create(const char *file, unsigned initial_size)
