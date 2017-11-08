@@ -12,6 +12,7 @@
 #include <threads/synch.h>
 #include "userprog/process.h"
 #include "userprog/syscall.h"
+#include "lib/user/syscall.h"
 
 static void syscall_handler (struct intr_frame *);
 
@@ -87,7 +88,7 @@ syscall_handler (struct intr_frame *f UNUSED)
   	case SYS_EXIT :
   	{
   		//Rudimentary implementation of exit
-      int status = *(int *)(f->esp + 1);
+      int status = *(int *)(f->esp + 4);
       exit(status);
   	}
   	break;

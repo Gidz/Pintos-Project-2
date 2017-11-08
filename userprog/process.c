@@ -17,7 +17,6 @@
 #include "threads/palloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
-
 #include<stdlib.h>
 
 static thread_func start_process NO_RETURN;
@@ -95,7 +94,7 @@ start_process (void *file_name_)
   palloc_free_page (file_name);
   if (!success)
     // update parent list with -1 exit status of child tid & sema up
-    thread_exit (-1);
+    thread_exit ();
   // update parent list with exit status of child tid & sema up
 
   /* Start the user process by simulating a return from an
