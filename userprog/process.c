@@ -120,7 +120,7 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid UNUSED)
 {
-  int counter=100;
+  int counter=1000;
   //Change to infinite loop for now
   while (counter) {
     /* code */
@@ -280,6 +280,7 @@ load (const char *cli_input, void (**eip) (void), void **esp)
   /* Open executable file. */
   lock_filesys();
     file = filesys_open (argv[0]);
+    file_deny_write(file);
   unlock_filesys();
   
   if (file == NULL)
