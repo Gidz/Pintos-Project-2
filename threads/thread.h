@@ -25,8 +25,6 @@ typedef int tid_t;
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
 
-/* Lock used for file system operations*/
-struct lock filesys_lock;
 
 
 
@@ -95,15 +93,15 @@ struct thread
     uint8_t *stack;                     /* Saved stack pointer. */
     int priority;                       /* Priority. */
     struct list_elem allelem;           /* List element for all threads list. */
-    int handle;                         /* Handle for handling the file; initialized to 2*/
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
-    struct list process_files;          /* List to hold the process files*/
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
+    int handle;                         /* Handle for handling the file; initialized to 2*/
+    struct list process_files;          /* List to holds the process files*/
 #endif
 
     /* Owned by thread.c. */
@@ -145,5 +143,4 @@ int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
-
 #endif /* threads/thread.h */

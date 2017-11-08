@@ -278,7 +278,10 @@ load (const char *cli_input, void (**eip) (void), void **esp)
   process_activate ();
 
   /* Open executable file. */
-  file = filesys_open (argv[0]);
+  lock_filesys();
+    file = filesys_open (argv[0]);
+  unlock_filesys();
+  
   if (file == NULL)
     {
       printf ("load: %s: open failed\n", file_name);
@@ -368,7 +371,9 @@ load (const char *cli_input, void (**eip) (void), void **esp)
 
  done:
   /* We arrive here whether the load is successful or not. */
-  file_close (file);
+  lock_filesys();
+    file_close (file);
+  unlock_filesys();
   return success;
 }
 
@@ -442,8 +447,11 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
   ASSERT ((read_bytes + zero_bytes) % PGSIZE == 0);
   ASSERT (pg_ofs (upage) == 0);
   ASSERT (ofs % PGSIZE == 0);
+  
+  lock_filesys();
+    file_seek (file, ofs);
+  unlock_filesys();
 
-  file_seek (file, ofs);
   while (read_bytes > 0 || zero_bytes > 0)
     {
       /* Calculate how to fill this page.
@@ -478,49 +486,6 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       upage += PGSIZE;
     }
   return true;
-}
-
-bool pad(void **esp,int length)
-{
-  while(length!=0)
-  {
-    *esp -=1;
-    memcpy(*esp,'0',sizeof(char));
-    length--;
-  }
-}
-
-
-bool put_word_into_stack(void **esp,char *word)
-{
-  int length = strlen(word);
-  if(length>4)
-  {
-    int to_pad=0;
-    //Handle words longer than 4 letters
-    memcpy(*esp,word,sizeof(char)*length);
-    to_pad = 4-(length % 4);
-    //Write offset number of zeroes
-    pad(esp,to_pad);
-    return true;
-  }
-  else if(length <4)
-  {
-    //Handle words lesser than 4 letters
-    int to_pad=0;
-    //Handle words longer than 4 letters
-    memcpy(*esp,word,sizeof(char)*length);
-    to_pad = 4-(length %4);
-    //Write offset number of zeroes
-    pad(esp,to_pad);
-    return true;
-  }
-  else
-  {
-      memcpy(*esp,word,sizeof(char)*length);
-      return true;
-  }
-  return false;
 }
 
 /* Create a minimal stack by mapping a zeroed page at the top of
